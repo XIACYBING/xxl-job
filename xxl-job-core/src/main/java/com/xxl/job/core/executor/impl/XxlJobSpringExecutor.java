@@ -35,6 +35,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
         // init JobHandler Repository
         /*initJobHandlerRepository(applicationContext);*/
 
+        // 初始化xxl-job的任务方法仓库
         // init JobHandler Repository (for method)
         initJobHandlerMethodRepository(applicationContext);
 
@@ -87,8 +88,11 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
         for (String beanDefinitionName : beanDefinitionNames) {
             Object bean = applicationContext.getBean(beanDefinitionName);
 
-            Map<Method, XxlJob> annotatedMethods = null;   // referred to ：org.springframework.context.event.EventListenerMethodProcessor.processBean
+            // referred to ：org.springframework.context.event.EventListenerMethodProcessor.processBean
+            Map<Method, XxlJob> annotatedMethods = null;
             try {
+
+                // 提取具有xxlJob注解的方法
                 annotatedMethods = MethodIntrospector.selectMethods(bean.getClass(),
                         new MethodIntrospector.MetadataLookup<XxlJob>() {
                             @Override
@@ -103,6 +107,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
                 continue;
             }
 
+            // 循环方法和xxl-job的映射
             for (Map.Entry<Method, XxlJob> methodXxlJobEntry : annotatedMethods.entrySet()) {
                 Method method = methodXxlJobEntry.getKey();
                 XxlJob xxlJob = methodXxlJobEntry.getValue();
@@ -133,6 +138,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
                 Method initMethod = null;
                 Method destroyMethod = null;
 
+                // 提取初始化和销毁方法
                 if (xxlJob.init().trim().length() > 0) {
                     try {
                         initMethod = bean.getClass().getDeclaredMethod(xxlJob.init());
@@ -150,6 +156,7 @@ public class XxlJobSpringExecutor extends XxlJobExecutor implements ApplicationC
                     }
                 }
 
+                // 注册JobHandler
                 // registry jobhandler
                 registJobHandler(name, new MethodJobHandler(bean, method, initMethod, destroyMethod));
             }

@@ -17,27 +17,34 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.*;
-
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * handler thread
+ *
  * @author xuxueli 2016-1-16 19:52:47
  */
-public class JobThread extends Thread{
+public class JobThread extends Thread {
 	private static Logger logger = LoggerFactory.getLogger(JobThread.class);
 
 	private int jobId;
+
+	/**
+	 * 任务处理器
+	 */
 	private IJobHandler handler;
 	private LinkedBlockingQueue<TriggerParam> triggerQueue;
-	private Set<Long> triggerLogIdSet;		// avoid repeat trigger for the same TRIGGER_LOG_ID
+	private Set<Long> triggerLogIdSet;        // avoid repeat trigger for the same TRIGGER_LOG_ID
 
 	private volatile boolean toStop = false;
 	private String stopReason;
 
-    private boolean running = false;    // if running job
-	private int idleTimes = 0;			// idel times
-
+	private boolean running = false;    // if running job
+	private int idleTimes = 0;            // idel times
 
 	public JobThread(int jobId, IJobHandler handler) {
 		this.jobId = jobId;
@@ -73,7 +80,7 @@ public class JobThread extends Thread{
      * @param stopReason
      */
 	public void toStop(String stopReason) {
-		/**
+		/*
 		 * Thread.interrupt只支持终止线程的阻塞状态(wait、join、sleep)，
 		 * 在阻塞出抛出InterruptedException异常,但是并不会终止运行的线程本身；
 		 * 所以需要注意，此处彻底销毁本线程，需要通过共享变量方式；

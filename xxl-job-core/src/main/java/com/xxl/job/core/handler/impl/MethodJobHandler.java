@@ -7,6 +7,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /**
+ * 方法类型的Job-Handler
+ *
  * @author xuxueli 2019-12-11 21:12:18
  */
 public class MethodJobHandler extends IJobHandler {

@@ -1,7 +1,12 @@
 package com.xxl.job.core.biz.impl;
 
 import com.xxl.job.core.biz.ExecutorBiz;
-import com.xxl.job.core.biz.model.*;
+import com.xxl.job.core.biz.model.IdleBeatParam;
+import com.xxl.job.core.biz.model.KillParam;
+import com.xxl.job.core.biz.model.LogParam;
+import com.xxl.job.core.biz.model.LogResult;
+import com.xxl.job.core.biz.model.ReturnT;
+import com.xxl.job.core.biz.model.TriggerParam;
 import com.xxl.job.core.enums.ExecutorBlockStrategyEnum;
 import com.xxl.job.core.executor.XxlJobExecutor;
 import com.xxl.job.core.glue.GlueFactory;
@@ -45,18 +50,22 @@ public class ExecutorBizImpl implements ExecutorBiz {
 
     @Override
     public ReturnT<String> run(TriggerParam triggerParam) {
+
+        // 获取任务线程
         // load old：jobHandler + jobThread
         JobThread jobThread = XxlJobExecutor.loadJobThread(triggerParam.getJobId());
-        IJobHandler jobHandler = jobThread!=null?jobThread.getHandler():null;
+        IJobHandler jobHandler = jobThread != null ? jobThread.getHandler() : null;
         String removeOldReason = null;
 
         // valid：jobHandler + jobThread
         GlueTypeEnum glueTypeEnum = GlueTypeEnum.match(triggerParam.getGlueType());
         if (GlueTypeEnum.BEAN == glueTypeEnum) {
 
+            // 获取对应的任务处理器
             // new jobhandler
             IJobHandler newJobHandler = XxlJobExecutor.loadJobHandler(triggerParam.getExecutorHandler());
 
+            // 如果已有任务线程，但是当前获取到的任务处理器和任务线程关联到的任务处理器不一样，则将任务线程和任务处理器置空，后续会处理
             // valid old jobThread
             if (jobThread!=null && jobHandler != newJobHandler) {
                 // change handler, need kill old thread
@@ -66,6 +75,7 @@ public class ExecutorBizImpl implements ExecutorBiz {
                 jobHandler = null;
             }
 
+            // 如果任务处理器为空，则把当前获取到的任务处理器作为将要使用的任务处理器来使用
             // valid handler
             if (jobHandler == null) {
                 jobHandler = newJobHandler;
@@ -138,14 +148,14 @@ public class ExecutorBizImpl implements ExecutorBiz {
             }
         }
 
+        // 如果没有对应的任务线程，则注册一个任务线程
         // replace thread (new or exists invalid)
         if (jobThread == null) {
             jobThread = XxlJobExecutor.registJobThread(triggerParam.getJobId(), jobHandler, removeOldReason);
         }
 
         // push data to queue
-        ReturnT<String> pushResult = jobThread.pushTriggerQueue(triggerParam);
-        return pushResult;
+        return jobThread.pushTriggerQueue(triggerParam);
     }
 
     @Override

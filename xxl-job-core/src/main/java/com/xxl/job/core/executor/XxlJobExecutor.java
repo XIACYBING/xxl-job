@@ -3,6 +3,7 @@ package com.xxl.job.core.executor;
 import com.xxl.job.core.biz.AdminBiz;
 import com.xxl.job.core.biz.client.AdminBizClient;
 import com.xxl.job.core.handler.IJobHandler;
+import com.xxl.job.core.handler.annotation.XxlJob;
 import com.xxl.job.core.log.XxlJobFileAppender;
 import com.xxl.job.core.server.EmbedServer;
 import com.xxl.job.core.thread.JobLogFileCleanThread;
@@ -161,26 +162,49 @@ public class XxlJobExecutor  {
         }
     }
 
-
     // ---------------------- job handler repository ----------------------
-    private static ConcurrentMap<String, IJobHandler> jobHandlerRepository = new ConcurrentHashMap<String, IJobHandler>();
-    public static IJobHandler registJobHandler(String name, IJobHandler jobHandler){
+    private static ConcurrentMap<String, IJobHandler> jobHandlerRepository =
+        new ConcurrentHashMap<String, IJobHandler>();
+
+    public static IJobHandler registJobHandler(String name, IJobHandler jobHandler) {
         logger.info(">>>>>>>>>>> xxl-job register jobhandler success, name:{}, jobHandler:{}", name, jobHandler);
         return jobHandlerRepository.put(name, jobHandler);
     }
-    public static IJobHandler loadJobHandler(String name){
+
+    /**
+     * 根据任务执行器名称获取任务执行器
+     *
+     * @see XxlJob#value()
+     */
+    public static IJobHandler loadJobHandler(String name) {
         return jobHandlerRepository.get(name);
     }
 
-
-    // ---------------------- job thread repository ----------------------
+    /**
+     * ---------------------- job thread repository ----------------------
+     * <p>
+     * <定时任务id, 定时任务线程>
+     */
     private static ConcurrentMap<Integer, JobThread> jobThreadRepository = new ConcurrentHashMap<Integer, JobThread>();
-    public static JobThread registJobThread(int jobId, IJobHandler handler, String removeOldReason){
-        JobThread newJobThread = new JobThread(jobId, handler);
-        newJobThread.start();
-        logger.info(">>>>>>>>>>> xxl-job regist JobThread success, jobId:{}, handler:{}", new Object[]{jobId, handler});
 
-        JobThread oldJobThread = jobThreadRepository.put(jobId, newJobThread);	// putIfAbsent | oh my god, map's put method return the old value!!!
+    /**
+     * 注册执行任务
+     */
+    public static JobThread registJobThread(int jobId, IJobHandler handler, String removeOldReason) {
+
+        // 生成任务线程
+        JobThread newJobThread = new JobThread(jobId, handler);
+
+        // 启动线程
+        newJobThread.start();
+        logger.info(">>>>>>>>>>> xxl-job regist JobThread success, jobId:{}, handler:{}",
+            new Object[] {jobId, handler});
+
+        // 放入集合中
+        // putIfAbsent | oh my god, map's put method return the old value!!!
+        JobThread oldJobThread = jobThreadRepository.put(jobId, newJobThread);
+
+        // 关闭旧任务线程
         if (oldJobThread != null) {
             oldJobThread.toStop(removeOldReason);
             oldJobThread.interrupt();
@@ -188,7 +212,8 @@ public class XxlJobExecutor  {
 
         return newJobThread;
     }
-    public static JobThread removeJobThread(int jobId, String removeOldReason){
+
+    public static JobThread removeJobThread(int jobId, String removeOldReason) {
         JobThread oldJobThread = jobThreadRepository.remove(jobId);
         if (oldJobThread != null) {
             oldJobThread.toStop(removeOldReason);
@@ -198,9 +223,12 @@ public class XxlJobExecutor  {
         }
         return null;
     }
-    public static JobThread loadJobThread(int jobId){
-        JobThread jobThread = jobThreadRepository.get(jobId);
-        return jobThread;
+
+    /**
+     * 根据{@code jobId}获取可以执行对应任务的线程
+     */
+    public static JobThread loadJobThread(int jobId) {
+        return jobThreadRepository.get(jobId);
     }
 
 }
